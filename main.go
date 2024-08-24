@@ -2,7 +2,6 @@ package main
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -24,8 +23,7 @@ func main() {
 
 	mux.HandleFunc("POST /generate", func(w http.ResponseWriter, r *http.Request) {
 		text := r.FormValue("string")
-		log.Println(text)
-		log.Println(GetEncodingMode(text))
+		CreateDataSegment(text)
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
 
