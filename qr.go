@@ -21,17 +21,7 @@ const (
 	CORRECTION_H
 )
 
-const (
-	VERSION_1 = 16
-	VERSION_2 = 28
-	VERSION_3 = 44
-	VERSION_4 = 64
-	VERSION_5 = 86
-	VERSION_6 = 108
-	VERSION_7 = 124
-	VERSION_8 = 154
-	VERSION_9 = 182
-)
+var VERSIONS = []int{19, 34, 55, 80, 108, 136, 156, 194, 232, 274}
 
 func GetEncodingMode(text string) EncodingMode {
 	var r = 0b0111
@@ -46,29 +36,36 @@ func GetEncodingMode(text string) EncodingMode {
 	return EncodingMode(r & -r)
 }
 
-func GetCodeVersion(text string) int {
-	return VERSION_4
+func GetCodeVersionAndLength(text string) (int, int) {
+	size := len([]byte(text))
+	for i, v := range VERSIONS {
+		if v > size {
+			return i + 1, v
+		}
+	}
+	lastIdx := len(VERSIONS) - 1
+	return lastIdx + 1, VERSIONS[lastIdx]
 }
 
 func CreateDataSegment(text string) {
 	final := ""
-	final1 := ""
 	mode := GetEncodingMode(text)
-	// log.Printf("%04b", mode)
+	dataBytes := []byte(text) // an array of the text as bytes
+	count := len(dataBytes)   // how many bytes in the data
+	dataLength := 0
+	version, versionLength := GetCodeVersionAndLength(text)
 	final += fmt.Sprintf("%04b", mode)
 	final += fmt.Sprintf("%08b", len(text))
-	t := []byte(text)
-	for _, c := range t {
+	for _, c := range dataBytes {
 		final += fmt.Sprintf("%08b", c)
-		final1 += fmt.Sprintf("%08b", c)
+		dataLength += len(fmt.Sprintf("%08b", c))
 	}
-	// terminatorBits := "0000"
-	// buffer.WriteString(fmt.Sprintf("%08b", len(text)))
-	// buffer.WriteString(fmt.Sprintf("%08b", []byte(text)))
-	// padding with zeroes
+	// terminator
 
-	log.Printf("%s", final)
-	log.Printf("%s", t)
-	log.Printf("%d", len(final1))
-	log.Printf("%d", len(final))
+	log.Println("Stats for %s:", text)
+	log.Printf("mode: %04b", mode)
+	log.Printf("count: %d", count)
+	log.Printf("data: %d", dataLength)
+	log.Printf("version picked: %d, length of version in bytes: %d", version, versionLength)
+	log.Printf("string at this point: %s", final)
 }
