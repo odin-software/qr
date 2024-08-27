@@ -6,6 +6,10 @@ body {
   min-height: 100vh;
   margin-top: 0;
   margin-bottom: 0;
+
+  background-color: #0F1822;
+
+  color: #D6D7D5;
 }
 
 img {
@@ -25,4 +29,8 @@ form {
 footer {
   margin-top: auto;
   padding-bottom: 1em;
+
+  a {
+    color: #D6D7D5;
+  }
 }

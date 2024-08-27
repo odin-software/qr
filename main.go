@@ -16,9 +16,14 @@ import (
 const IMAGE_NAME = "imgName"
 const STATIC_DIR = "static"
 
+var ImageOptions []standard.ImageOption = []standard.ImageOption{
+	standard.WithBgColorRGBHex("#0F1822"),
+	standard.WithFgColorRGBHex("#DDE61F"),
+}
+
 func main() {
 	mux := http.NewServeMux()
-	cleanupTick := time.NewTicker(10 * time.Minute)
+	cleanupTick := time.NewTicker(5 * time.Minute)
 
 	fileServerDir := fmt.Sprintf("./%s", STATIC_DIR)
 	fileServerPattern := fmt.Sprintf("GET /%s/", STATIC_DIR)
@@ -64,7 +69,7 @@ func main() {
 		}
 		id := uuid.New()
 		filePath := fmt.Sprintf("%s/%s.png", STATIC_DIR, id.String())
-		wr, err := standard.New(filePath)
+		wr, err := standard.New(filePath, ImageOptions...)
 		if err != nil {
 			fmt.Printf("standard.New failed: %v", err)
 			return
