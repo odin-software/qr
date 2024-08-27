@@ -1,4 +1,7 @@
 {{ define "body" }}
+{{ if . }}
+<img src="{{ . }}" alt="QR Code" />
+{{ end }}
 <form action="/generate" method="post">
   <label for="string">Text string:</label>
   <input type="text" name="string" id="string" />

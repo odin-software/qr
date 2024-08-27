@@ -1,0 +1,27 @@
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: monospace;
+  min-height: 100vh;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+img {
+  padding-top: 1em;
+  width: 100%;
+}
+
+form {
+  font-size: 1em;
+  margin-top: 1em;
+
+  button {
+    font-family: monospace;
+  }
+}
+
+footer {
+  margin-top: auto;
+}
