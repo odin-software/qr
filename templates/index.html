@@ -1,7 +1,12 @@
 {{ define "body" }}
-{{ if . }}
-<a href="{{ . }}" download="qrcode">
-  <img src="{{ . }}" alt="QR Code" />
+<h1>Odin's QR Generator</h1>
+<p class="subtitle">Generate QR codes from text</p>
+{{ if .Error }}
+<div class="error">{{ .Error }}</div>
+{{ end }}
+{{ if .ImageURL }}
+<a href="{{ .ImageURL }}" download="qrcode">
+  <img src="{{ .ImageURL }}" alt="QR Code" />
 </a>
 {{ end }}
 <form action="/generate" method="post">
