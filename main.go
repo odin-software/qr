@@ -102,7 +102,7 @@ func main() {
 		http.Redirect(w, r, redirectUrl, http.StatusFound)
 	})
 
-	go http.ListenAndServe(":9876", mux)
+	go http.ListenAndServe(":7003", mux)
 
 	for range cleanupTick.C {
 		cleanupImages()
