@@ -1,2 +1,4 @@
 tmp/
 *.png
+
+.DS_Store
