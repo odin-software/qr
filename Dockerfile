@@ -28,8 +28,13 @@ COPY --from=builder /build/qr .
 COPY --from=builder /build/templates ./templates
 COPY --from=builder /build/static ./static
 
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Create static directory for generated QR codes
-RUN mkdir -p /app/static
+RUN mkdir -p /app/static && chown -R appuser:appgroup /app
+
+USER appuser
 
 # Expose application port
 EXPOSE 7003
