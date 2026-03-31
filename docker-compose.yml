@@ -1,0 +1,18 @@
+services:
+  qr:
+    image: localhost:5000/qr:latest
+    container_name: qr
+    restart: unless-stopped
+    ports:
+      - "7003:7003"
+    networks:
+      - proxy
+      - internal
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  proxy:
+    external: true
+  internal:
+    external: true
