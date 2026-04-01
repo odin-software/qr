@@ -159,6 +159,7 @@ func cleanupImages() {
 		log.Printf("error reading static dir for cleanup: %v", err)
 		return
 	}
+	var count int
 	for _, entry := range dir {
 		if entry.IsDir() {
 			continue
@@ -171,6 +172,11 @@ func cleanupImages() {
 		fileName := fmt.Sprintf("%s/%s", STATIC_DIR, name)
 		if err := os.Remove(fileName); err != nil {
 			log.Printf("error cleaning up file: %s", fileName)
+		} else {
+			count++
 		}
+	}
+	if count > 0 {
+		log.Printf("Cleanup: removed %d QR image(s)", count)
 	}
 }

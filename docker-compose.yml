@@ -8,8 +8,13 @@ services:
     networks:
       - proxy
       - internal
+    volumes:
+      - qr-images:/app/static
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+
+volumes:
+  qr-images:
 
 networks:
   proxy:
