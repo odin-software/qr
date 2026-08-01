@@ -1,11 +1,14 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -14,14 +17,43 @@ import (
 	"github.com/yeqown/go-qrcode/writer/standard"
 )
 
+// Assets fijos y plantillas viajan dentro del binario: el deploy es un solo
+// ELF, sin directorios que sincronizar al lado.
+//
+//go:embed templates static
+var assetsFS embed.FS
+
 const IMAGE_NAME = "imgName"
-const STATIC_DIR = "static"
 const MAX_INPUT_LENGTH = 2048
 const MAX_BODY_SIZE = 4096
+
+// imageDir es el directorio en disco donde se escriben los QR generados.
+// En produccion apunta a un directorio de estado escribible (systemd usa
+// StateDirectory); en desarrollo cae en ./generated.
+var imageDir = func() string {
+	if d := os.Getenv("QR_IMAGE_DIR"); d != "" {
+		return d
+	}
+	return "generated"
+}()
+
+// listenAddr permite mover el puerto sin recompilar.
+var listenAddr = func() string {
+	if p := os.Getenv("PORT"); p != "" {
+		return ":" + p
+	}
+	return ":7003"
+}()
 
 type PageData struct {
 	ImageURL string
 	Error    string
+}
+
+// parseTemplates lee las plantillas del FS embebido. Antes eran tres llamadas
+// identicas a ParseFiles repartidas por el archivo.
+func parseTemplates() (*template.Template, error) {
+	return template.New("index.html").ParseFS(assetsFS, "templates/layout.html", "templates/index.html")
 }
 
 var ImageOptions []standard.ImageOption = []standard.ImageOption{
@@ -33,15 +65,22 @@ func main() {
 	mux := http.NewServeMux()
 	cleanupTick := time.NewTicker(5 * time.Minute)
 
-	fileServerDir := fmt.Sprintf("./%s", STATIC_DIR)
-	fileServerPattern := fmt.Sprintf("GET /%s/", STATIC_DIR)
-	fileServerStrip := fmt.Sprintf("/%s/", STATIC_DIR)
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		log.Fatalf("no se pudo crear el directorio de imagenes %q: %v", imageDir, err)
+	}
 
-	fs := http.FileServer(http.Dir(fileServerDir))
-	mux.Handle(fileServerPattern, http.StripPrefix(fileServerStrip, fs))
+	// /static/ sirve los assets embebidos (css, icons).
+	staticSub, err := fs.Sub(assetsFS, "static")
+	if err != nil {
+		log.Fatalf("no se pudo abrir el FS embebido: %v", err)
+	}
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+
+	// /img/ sirve los QR generados desde el directorio de estado.
+	mux.Handle("GET /img/", http.StripPrefix("/img/", http.FileServer(http.Dir(imageDir))))
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		t, err := template.New("index.html").ParseFiles("templates/layout.html", "templates/index.html")
+		t, err := parseTemplates()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -63,19 +102,21 @@ func main() {
 			return
 		}
 
-		filePath := fmt.Sprintf("%s/%s.png", STATIC_DIR, q)
+		filePath := filepath.Join(imageDir, q+".png")
 
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			renderWithError(w, "QR code not found or has expired")
 			return
 		}
 
-		t, err := template.New("index.html").ParseFiles("templates/layout.html", "templates/index.html")
+		t, err := parseTemplates()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		data := PageData{ImageURL: filePath}
+		// Ruta web, no ruta de disco: el directorio en disco es configurable
+		// pero la URL publica siempre es /img/.
+		data := PageData{ImageURL: "/img/" + q + ".png"}
 		err = t.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -104,7 +145,7 @@ func main() {
 			return
 		}
 		id := uuid.New()
-		filePath := fmt.Sprintf("%s/%s.png", STATIC_DIR, id.String())
+		filePath := filepath.Join(imageDir, id.String()+".png")
 		wr, err := standard.New(filePath, ImageOptions...)
 		if err != nil {
 			log.Printf("Image file creation error: %v", err)
@@ -124,8 +165,8 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("Server starting on port 7003")
-		if err := http.ListenAndServe(":7003", mux); err != nil {
+		log.Printf("Server starting on %s (imagenes en %s)", listenAddr, imageDir)
+		if err := http.ListenAndServe(listenAddr, mux); err != nil {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
@@ -140,7 +181,7 @@ func main() {
 }
 
 func renderWithError(w http.ResponseWriter, errorMsg string) {
-	t, err := template.New("index.html").ParseFiles("templates/layout.html", "templates/index.html")
+	t, err := parseTemplates()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -154,9 +195,9 @@ func renderWithError(w http.ResponseWriter, errorMsg string) {
 }
 
 func cleanupImages() {
-	dir, err := os.ReadDir(STATIC_DIR)
+	dir, err := os.ReadDir(imageDir)
 	if err != nil {
-		log.Printf("error reading static dir for cleanup: %v", err)
+		log.Printf("error reading image dir for cleanup: %v", err)
 		return
 	}
 	var count int
@@ -169,7 +210,7 @@ func cleanupImages() {
 		if len(name) < 4 || name[len(name)-4:] != ".png" {
 			continue
 		}
-		fileName := fmt.Sprintf("%s/%s", STATIC_DIR, name)
+		fileName := filepath.Join(imageDir, name)
 		if err := os.Remove(fileName); err != nil {
 			log.Printf("error cleaning up file: %s", fileName)
 		} else {

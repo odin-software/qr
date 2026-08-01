@@ -3,3 +3,6 @@ tmp/
 
 .DS_Store
 qr
+
+# QR generados en desarrollo (en produccion: QR_IMAGE_DIR)
+generated/
