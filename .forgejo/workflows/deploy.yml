@@ -1,0 +1,22 @@
+name: Deploy qr
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+
+jobs:
+  deploy:
+    runs-on: host
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 /usr/local/go/bin/go build -o /tmp/qr-linux-amd64 .
+
+      - name: Deploy
+        run: sudo /usr/local/bin/qr-deploy /tmp/qr-linux-amd64
